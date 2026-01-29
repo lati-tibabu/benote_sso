@@ -11,18 +11,17 @@ npm install @benote/sso-backend
 ## Usage
 
 ```javascript
+// backend/routes/authRoutes.js
 const ssoService = require('@benote/sso-backend');
 
-// Example usage in an express route
-app.post('/api/auth/sso/odoo', async (req, res) => {
-  const user = req.user; // Get user from session/context
-  const secret = process.env.SSO_SECRET_KEY;
+router.post('/sso/odoo', authMiddleware.authMiddleware, async (req, res) => {
+  const user = req.user;
+  const secret = process.env.ODOO_JWT_SECRET;
   const audience = 'odoo';
 
-  const token = ssoService.generateToken(user, user.permissions, audience, secret);
-  
+  const token = ssoService.generateToken(user, [], audience, secret);
   res.json({ token });
-});
+})
 ```
 
 ### API Reference

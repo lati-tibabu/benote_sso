@@ -8,14 +8,62 @@ A robust, enterprise-grade SSO solution for the Benote ecosystem. This module en
 
 The SSO process follows the "POST Binding" pattern to ensure high security and avoid sensitive tokens appearing in browser history.
 
-1.  **Request**: User clicks "Open ERP" in the Benote Frontend.
-2.  **Token Generation**: Benote Frontend calls your custom `/api/auth/sso/odoo` endpoint.
-3.  **Signing**: Benote Backend uses `@benote/sso-backend` to sign a JWT with user identity and permissions.
-4.  **Delivery**: The Frontend receives the token and uses `@benote/sso-frontend` to dynamically generate a hidden form.
-5.  **Handshake**: The form automatically POSTs the token to the external service (e.g., Odoo).
-6.  **Login**: The external service validates the signature and establishes a session.
+The `@benote/sso-backend` and `@benote/sso-frontend` packages are used to facilitate Single Sign-On (SSO) between Benote and an external Odoo instance.
 
----
+### **Backend Usage (`@benote/sso-backend`)**
+
+In the backend, the package is used to generate a secure SSO token for a target application (in this case, Odoo).
+
+*   **Implementation:** In authRoutes.js, the package is imported as `ssoService`.
+*   **SSO Endpoint:** A dedicated route `POST /api/auth/sso/odoo` is defined in authRoutes.js.
+*   **Token Generation:** When a request is made to this endpoint, the backend uses `ssoService.generateToken()` to create a JWT signed with `ODOO_JWT_SECRET`. This token contains basic user information and is scoped for the `odoo` audience.
+
+```javascript
+// backend/routes/authRoutes.js
+router.post('/sso/odoo', authMiddleware.authMiddleware, async (req, res) => {
+  const user = req.user;
+  const secret = process.env.ODOO_JWT_SECRET;
+  const audience = 'odoo';
+
+  const token = ssoService.generateToken(user, [], audience, secret);
+  res.json({ token });
+})
+```
+
+### **Frontend Usage (`@benote/sso-frontend`)**
+
+In the frontend, the package manages the redirection logic, including fetching the SSO token from the backend and redirecting the user to the target application with that token.
+
+*   **Service Wrapper:** In ssoService.js, a wrapper function `triggerOdooSSO` utilizes the `useSSO` hook provided by the package.
+*   **Redirection Flow:** The `triggerSSO` function handles the handshake:
+    1.  It calls the Benote backend endpoint.
+    2.  It receives the generated SSO token.
+    3.  It redirects the user to the Odoo instance URL with the token attached.
+
+```javascript
+// frontend/src/services/ssoService.js
+import { useSSO } from '@benote/sso-frontend';
+
+export const triggerOdooSSO = async (apiEndpoint, targetBaseUrl, authToken) => {
+  const { triggerSSO } = useSSO();
+  await triggerSSO(apiEndpoint, targetBaseUrl, authToken);
+};
+```
+
+### **UI Integration**
+
+The SSO flow is triggered by the OpenERPButton.jsx component, which passes the necessary configuration (backend API URL and Odoo target URL) to the service.
+
+```jsx
+// frontend/src/shared/components/ui/OpenERPButton.jsx
+const handleClick = async () => {
+  const apiEndpoint = 'http://localhost:3060/api/auth/sso/odoo';
+  const targetBaseUrl = 'http://localhost:8070'; // Odoo instance URL
+  const authToken = localStorage.getItem('jwt'); 
+
+  await triggerOdooSSO(apiEndpoint, targetBaseUrl, authToken);
+};
+```
 
 ## 📦 Package Parts
 
@@ -26,80 +74,7 @@ The SSO process follows the "POST Binding" pattern to ensure high security and a
 
 ---
 
-## 🛠️ Backend Implementation (`@benote/sso-backend`)
-
-### 1. Installation
-```bash
-npm install @benote/sso-backend
-```
-
-### 2. Implementation Guide
-Create a route that acts as the "Token Issuer".
-
-```javascript
-// routes/auth.js
-const express = require("express");
-const router = express.Router();
-const ssoService = require("@benote/sso-backend");
-const { authMiddleware } = require("../middlewares/auth");
-
-router.post("/sso/odoo", authMiddleware, async (req, res) => {
-  try {
-    /**
-     * @param {Object} user - User model (id, email, name, role)
-     * @param {Array} accessRights - Array of permission names
-     * @param {string} audience - Target system ID (usually 'odoo')
-     * @param {string} secret - Shared secret key
-     */
-    const token = ssoService.generateToken(
-      req.user,
-      req.user.accessControls, // e.g., ['inventory.read', 'sales.all']
-      "odoo",
-      process.env.SSO_SHARED_SECRET
-    );
-
-    res.status(200).json({ token });
-  } catch (error) {
-    res.status(500).json({ error: "Could not generate SSO token" });
-  }
-});
-```
-
----
-
-## 💻 Frontend Implementation (`@benote/sso-frontend`)
-
-### 1. Installation
-```bash
-npm install @benote/sso-frontend
-```
-
-### 2. Integration in Components
-Use the `useSSO` hook to trigger the redirect automatically.
-
-```javascript
-import { useSSO } from "@benote/sso-frontend";
-
-const AppSidebar = () => {
-  const { triggerSSO } = useSSO();
-  const token = localStorage.getItem("token"); // Current Benote Auth Token
-
-  const handleOpenERP = async () => {
-    // 1. Benote Endpoint, 2. Odoo Base URL, 3. Auth Token
-    await triggerSSO(
-      "https://api.benote.com/api/auth/sso/odoo", 
-      "https://erp.company.com", 
-      token
-    );
-  };
-
-  return <button onClick={handleOpenERP}>Launch Odoo</button>;
-};
-```
-
----
-
-## 🐍 External Integration (The Odoo Side)
+##  External Integration (The Odoo Side)
 
 To complete the link, your Odoo instance needs a controller to receive the POST request.
 

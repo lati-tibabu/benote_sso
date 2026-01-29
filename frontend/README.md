@@ -14,25 +14,28 @@ npm install @benote/sso-frontend
 
 ## Usage
 
+### 1. Service Wrapper
+
 ```javascript
+// frontend/src/services/ssoService.js
 import { useSSO } from '@benote/sso-frontend';
 
-const MyComponent = () => {
+export const triggerOdooSSO = async (apiEndpoint, targetBaseUrl, authToken) => {
   const { triggerSSO } = useSSO();
+  await triggerSSO(apiEndpoint, targetBaseUrl, authToken);
+};
+```
 
-  const handleOdooRedirect = async () => {
-    const apiEndpoint = 'https://api.benote.fr/api/auth/sso/odoo';
-    const targetBaseUrl = 'https://erp.example.com';
-    const authToken = 'USER_SESSION_JWT';
+### 2. UI Integration
 
-    await triggerSSO(apiEndpoint, targetBaseUrl, authToken);
-  };
+```jsx
+// frontend/src/shared/components/ui/OpenERPButton.jsx
+const handleClick = async () => {
+  const apiEndpoint = 'http://localhost:3060/api/auth/sso/odoo';
+  const targetBaseUrl = 'http://localhost:8070'; // Odoo instance URL
+  const authToken = localStorage.getItem('jwt'); 
 
-  return (
-    <button onClick={handleOdooRedirect}>
-      Go to Odoo
-    </button>
-  );
+  await triggerOdooSSO(apiEndpoint, targetBaseUrl, authToken);
 };
 ```
 
