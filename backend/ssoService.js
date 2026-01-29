@@ -21,10 +21,10 @@ class SSOService {
 
     return jwt.sign(
       {
-        sub: user.id || user.sub,
-        email: user.email,
-        name: user.name,
-        roles: user.role,
+        sub: user?.id || user?.sub,
+        email: user?.email,
+        name: user?.name,
+        roles: user?.role,
         access_rights: accessRights,
         iss: issuer,
         aud: audience,
