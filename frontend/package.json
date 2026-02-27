@@ -1,13 +1,16 @@
 {
   "name": "@benote/sso-frontend",
   "version": "1.2.0",
-  "description": "Frontend SSO logic for Benote ecosystem",
-  "main": "index.js",
-  "type": "module",
+  "description": "Framework-agnostic frontend SSO utilities for Benote ecosystem",
+  "main": "index.cjs",
+  "module": "index.mjs",
   "exports": {
-    ".": "./index.js"
+    ".": {
+      "require": "./index.cjs",
+      "import": "./index.mjs"
+    }
   },
-  "peerDependencies": {
-    "react": "^17.0.0 || ^18.0.0"
+  "scripts": {
+    "test": "node --test tests/**/*.test.cjs"
   }
 }

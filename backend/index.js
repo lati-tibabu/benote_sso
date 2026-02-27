@@ -1,2 +1,1 @@
-const ssoService = require("./ssoService");
-module.exports = ssoService;
+module.exports = require("./index.cjs");

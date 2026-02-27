@@ -1,1 +1,1 @@
-export { useSSO } from "./useSSO.js";
+module.exports = require("./index.cjs");

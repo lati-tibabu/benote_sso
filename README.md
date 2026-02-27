@@ -1,6 +1,6 @@
 # Benote SSO (Single Sign-On) Module
 
-A secure SSO module for Benote that supports token handoff to external platforms using a JWT POST-binding flow.
+A secure SSO module for Benote that supports token handoff to external platforms using a JWT POST-binding flow. It is designed to work in any JavaScript-based project.
 
 ## Architecture Flow
 
@@ -13,7 +13,7 @@ A secure SSO module for Benote that supports token handoff to external platforms
 | Package | Purpose | Technology |
 | :--- | :--- | :--- |
 | `backend` | JWT generation, signing, and claims shaping. | Node.js / JWT |
-| `frontend` | Token fetch and automatic POST submission. | React / JavaScript |
+| `frontend` | Token fetch and automatic POST submission. | Browser JavaScript (framework-agnostic) |
 
 ## Backend Usage (`@benote/sso-backend`)
 
@@ -32,14 +32,19 @@ router.post("/sso/external", authMiddleware.authMiddleware, async (req, res) => 
 ## Frontend Usage (`@benote/sso-frontend`)
 
 ```javascript
-import { useSSO } from "@benote/sso-frontend";
+import { triggerSSO } from "@benote/sso-frontend";
 
 export const triggerExternalSSO = async (apiEndpoint, targetBaseUrl, authToken) => {
-  const { triggerSSO } = useSSO();
   await triggerSSO(apiEndpoint, targetBaseUrl, authToken, {
     allowedTargetOrigins: [new URL(targetBaseUrl).origin],
   });
 };
+```
+
+CommonJS:
+
+```javascript
+const { triggerSSO } = require("@benote/sso-frontend");
 ```
 
 ## External Platform Callback Example
@@ -76,3 +81,12 @@ def sso_callback(post):
 | `SSO_SHARED_SECRET` | Backend signing secret | Yes |
 | `SSO_TOKEN_TTL_SECONDS` | Token TTL in seconds | No |
 | `API_URL` | Benote API root | Yes |
+
+## Testing
+
+Run tests per package:
+
+```bash
+cd backend && npm test
+cd ../frontend && npm test
+```

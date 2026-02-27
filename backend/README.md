@@ -1,6 +1,6 @@
 # @benote/sso-backend
 
-This package provides backend logic for generating secure SSO tokens for Benote integrations with external platforms.
+Backend SSO token generation for any JavaScript project.
 
 ## Installation
 
@@ -8,35 +8,42 @@ This package provides backend logic for generating secure SSO tokens for Benote 
 npm install @benote/sso-backend
 ```
 
-## Usage
+## Tests
 
-```javascript
-// backend/routes/authRoutes.js
-const ssoService = require('@benote/sso-backend');
-
-router.post('/sso/external', authMiddleware.authMiddleware, async (req, res) => {
-  const user = req.user;
-  const secret = process.env.SSO_SHARED_SECRET;
-  const audience = 'external-platform';
-
-  const token = ssoService.generateToken(user, [], audience, secret);
-  res.json({ token });
-})
+```bash
+npm test
 ```
 
-### API Reference
+Test files live in `backend/tests`.
 
-#### `ssoService.generateToken(user, accessControls, audience, secret, issuer)`
+## CommonJS Usage
 
-Generates a signed JWT for external system SSO.
+```javascript
+const ssoService = require("@benote/sso-backend");
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `user` | `Object` | The user object containing `id` (or `sub`), `email`, `name`, `role`. |
-| `accessControls` | `Array` | Array of access control objects or strings representing roles/permissions. |
-| `audience` | `string` | The target system identifier (e.g., `'external-platform'`). |
-| `secret` | `string` | Secret key for signing the token. |
-| `issuer` | `string` | (Optional) Issuer identifier. Defaults to 'benote-auth'. |
-| `options` | `Object` | (Optional) Token options such as `expiresIn`. |
+const token = ssoService.generateToken(
+  user,
+  accessControls,
+  "external-platform",
+  process.env.SSO_SHARED_SECRET
+);
+```
 
-**Returns:** `string` (Signed JWT token, short-lived by default).
+## ESM Usage
+
+```javascript
+import ssoService, { generateToken } from "@benote/sso-backend";
+
+const tokenA = ssoService.generateToken(user, [], "external-platform", secret);
+const tokenB = generateToken(user, [], "external-platform", secret);
+```
+
+## API
+
+### `generateToken(user, accessControls, audience, secret, issuer?, options?)`
+
+- Validates required input (`user`, `audience`, `secret`, `user.id/sub`)
+- Signs HS256 JWT with issuer/audience/subject
+- Adds `jti` and short TTL by default
+
+`options` supports `expiresIn` and overrides default TTL behavior.
