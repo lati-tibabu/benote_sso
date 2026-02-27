@@ -1,6 +1,6 @@
 # @benote/sso-backend
 
-This package provides the backend logic for generating secure SSO tokens for the Benote ecosystem, intended for use with external integrations like OpenERP/Odoo.
+This package provides backend logic for generating secure SSO tokens for Benote integrations with external platforms.
 
 ## Installation
 
@@ -14,10 +14,10 @@ npm install @benote/sso-backend
 // backend/routes/authRoutes.js
 const ssoService = require('@benote/sso-backend');
 
-router.post('/sso/odoo', authMiddleware.authMiddleware, async (req, res) => {
+router.post('/sso/external', authMiddleware.authMiddleware, async (req, res) => {
   const user = req.user;
-  const secret = process.env.ODOO_JWT_SECRET;
-  const audience = 'odoo';
+  const secret = process.env.SSO_SHARED_SECRET;
+  const audience = 'external-platform';
 
   const token = ssoService.generateToken(user, [], audience, secret);
   res.json({ token });
@@ -34,8 +34,9 @@ Generates a signed JWT for external system SSO.
 | :--- | :--- | :--- |
 | `user` | `Object` | The user object containing `id` (or `sub`), `email`, `name`, `role`. |
 | `accessControls` | `Array` | Array of access control objects or strings representing roles/permissions. |
-| `audience` | `string` | The target system identifier (e.g., 'odoo'). |
+| `audience` | `string` | The target system identifier (e.g., `'external-platform'`). |
 | `secret` | `string` | Secret key for signing the token. |
 | `issuer` | `string` | (Optional) Issuer identifier. Defaults to 'benote-auth'. |
+| `options` | `Object` | (Optional) Token options such as `expiresIn`. |
 
-**Returns:** `string` (Signed JWT token valid for 24h).
+**Returns:** `string` (Signed JWT token, short-lived by default).

@@ -1,129 +1,78 @@
-# 🚀 Benote SSO (Single Sign-On) Module
+# Benote SSO (Single Sign-On) Module
 
-A robust, enterprise-grade SSO solution for the Benote ecosystem. This module enables seamless, secure authentication from Benote to external platforms like **Odoo (OpenERP)**, **Moodle**, or custom third-party services using a **JWT POST-Binding** flow.
+A secure SSO module for Benote that supports token handoff to external platforms using a JWT POST-binding flow.
 
----
+## Architecture Flow
 
-## 🏗️ Architecture Flow
+1. The frontend requests an SSO token from the Benote backend.
+2. The backend generates a short-lived JWT scoped to a target audience.
+3. The frontend submits that token to the external platform using a hidden POST form.
 
-The SSO process follows the "POST Binding" pattern to ensure high security and avoid sensitive tokens appearing in browser history.
-
-The `@benote/sso-backend` and `@benote/sso-frontend` packages are used to facilitate Single Sign-On (SSO) between Benote and an external Odoo instance.
-
-### **Backend Usage (`@benote/sso-backend`)**
-
-In the backend, the package is used to generate a secure SSO token for a target application (in this case, Odoo).
-
-*   **Implementation:** In authRoutes.js, the package is imported as `ssoService`.
-*   **SSO Endpoint:** A dedicated route `POST /api/auth/sso/odoo` is defined in authRoutes.js.
-*   **Token Generation:** When a request is made to this endpoint, the backend uses `ssoService.generateToken()` to create a JWT signed with `ODOO_JWT_SECRET`. This token contains basic user information and is scoped for the `odoo` audience.
-
-```javascript
-// backend/routes/authRoutes.js
-router.post('/sso/odoo', authMiddleware.authMiddleware, async (req, res) => {
-  const user = req.user;
-  const secret = process.env.ODOO_JWT_SECRET;
-  const audience = 'odoo';
-
-  const token = ssoService.generateToken(user, [], audience, secret);
-  res.json({ token });
-})
-```
-
-### **Frontend Usage (`@benote/sso-frontend`)**
-
-In the frontend, the package manages the redirection logic, including fetching the SSO token from the backend and redirecting the user to the target application with that token.
-
-*   **Service Wrapper:** In ssoService.js, a wrapper function `triggerOdooSSO` utilizes the `useSSO` hook provided by the package.
-*   **Redirection Flow:** The `triggerSSO` function handles the handshake:
-    1.  It calls the Benote backend endpoint.
-    2.  It receives the generated SSO token.
-    3.  It redirects the user to the Odoo instance URL with the token attached.
-
-```javascript
-// frontend/src/services/ssoService.js
-import { useSSO } from '@benote/sso-frontend';
-
-export const triggerOdooSSO = async (apiEndpoint, targetBaseUrl, authToken) => {
-  const { triggerSSO } = useSSO();
-  await triggerSSO(apiEndpoint, targetBaseUrl, authToken);
-};
-```
-
-### **UI Integration**
-
-The SSO flow is triggered by the OpenERPButton.jsx component, which passes the necessary configuration (backend API URL and Odoo target URL) to the service.
-
-```jsx
-// frontend/src/shared/components/ui/OpenERPButton.jsx
-const handleClick = async () => {
-  const apiEndpoint = 'http://localhost:3060/api/auth/sso/odoo';
-  const targetBaseUrl = 'http://localhost:8070'; // Odoo instance URL
-  const authToken = localStorage.getItem('jwt'); 
-
-  await triggerOdooSSO(apiEndpoint, targetBaseUrl, authToken);
-};
-```
-
-## 📦 Package Parts
+## Package Parts
 
 | Package | Purpose | Technology |
 | :--- | :--- | :--- |
-| `backend` | Handles JWT generation, signing, and permission mapping. | Node.js / JWT |
-| `frontend` | Handles API calls and automatic POST submission. | React / JavaScript |
+| `backend` | JWT generation, signing, and claims shaping. | Node.js / JWT |
+| `frontend` | Token fetch and automatic POST submission. | React / JavaScript |
 
----
+## Backend Usage (`@benote/sso-backend`)
 
-##  External Integration (The Odoo Side)
+```javascript
+// backend/routes/authRoutes.js
+router.post("/sso/external", authMiddleware.authMiddleware, async (req, res) => {
+  const user = req.user;
+  const secret = process.env.SSO_SHARED_SECRET;
+  const audience = "external-platform";
 
-To complete the link, your Odoo instance needs a controller to receive the POST request.
-
-**Example Python (Odoo Controller):**
-```python
-import jwt # pip install PyJWT
-from odoo import http
-from odoo.http import request
-
-class BenoteSSOCallback(http.Controller):
-    @http.route('/auth/sso/callback', type='http', auth='none', methods=['POST'], csrf=False)
-    def sso_callback(self, **post):
-        token = post.get('access_token')
-        secret = "YOUR_SHARED_SECRET_KEY"
-        
-        try:
-            # Decode and verify the Benote Signature
-            payload = jwt.decode(token, secret, audience='odoo', algorithms=['HS256'])
-            email = payload.get('email')
-            
-            # Authenticate user in Odoo
-            user = request.env['res.users'].sudo().search([('login', '=', email)], limit=1)
-            if user:
-                request.session.authenticate(request.db, user.login, None)
-                return http.redirect_with_hash('/web')
-        except Exception:
-            return "Invalid SSO Token."
+  const token = ssoService.generateToken(user, [], audience, secret);
+  res.json({ token });
+});
 ```
 
----
+## Frontend Usage (`@benote/sso-frontend`)
 
-## 🛡️ Security Best Practices
+```javascript
+import { useSSO } from "@benote/sso-frontend";
 
-1.  **Shared Secret**: Keep `SSO_SHARED_SECRET` in your `.env` files. NEVER hardcode it. Better yet, use a Vault/KMS.
-2.  **HTTPS**: This module requires HTTPS in production. The token is transmitted via POST, but it is still visible to the client's browser.
-3.  **Token Expiry**: By default, the SSO token expires in **24 hours**. For high-security environments, modify the `expiresIn` value in the backend service.
-4.  **Audience Check**: Always verify the `aud` (audience) claim on the receiver side to prevent token reuse across different systems.
+export const triggerExternalSSO = async (apiEndpoint, targetBaseUrl, authToken) => {
+  const { triggerSSO } = useSSO();
+  await triggerSSO(apiEndpoint, targetBaseUrl, authToken, {
+    allowedTargetOrigins: [new URL(targetBaseUrl).origin],
+  });
+};
+```
 
----
+## External Platform Callback Example
 
-## 📝 Configuration Summary
+```python
+import jwt  # pip install PyJWT
+
+def sso_callback(post):
+    token = post.get("access_token")
+    secret = "YOUR_SHARED_SECRET_KEY"
+
+    payload = jwt.decode(
+        token,
+        secret,
+        audience="external-platform",
+        algorithms=["HS256"]
+    )
+
+    # Use payload["email"] or payload["sub"] to identify the user
+    return payload
+```
+
+## Security Defaults
+
+1. Keep signing secrets in secure environment variables.
+2. Use HTTPS for all environments beyond local development.
+3. Tokens are short-lived by default (`SSO_TOKEN_TTL_SECONDS`, default `300`).
+4. Always verify `aud`, `iss`, `exp`, and signature on the receiver side.
+
+## Configuration
 
 | Env Variable | Role | Required |
 | :--- | :--- | :--- |
 | `SSO_SHARED_SECRET` | Backend signing secret | Yes |
-| `VITE_ODOO_URL` | Frontend redirection target | Yes |
+| `SSO_TOKEN_TTL_SECONDS` | Token TTL in seconds | No |
 | `API_URL` | Benote API root | Yes |
-
----
-
-## 🤝 Contributing
-For issues or feature requests regarding the SSO flow, please contact the Benote core team or open a PR in the `benote_sso` directory.

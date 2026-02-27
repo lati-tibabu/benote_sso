@@ -3,6 +3,10 @@
   "version": "1.2.0",
   "description": "Frontend SSO logic for Benote ecosystem",
   "main": "index.js",
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
   "peerDependencies": {
     "react": "^17.0.0 || ^18.0.0"
   }

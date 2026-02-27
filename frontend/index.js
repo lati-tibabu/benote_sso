@@ -1,1 +1,1 @@
-export { useSSO } from "./useSSO";
+export { useSSO } from "./useSSO.js";
