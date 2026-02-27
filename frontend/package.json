@@ -1,6 +1,6 @@
 {
   "name": "@benote/sso-frontend",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Framework-agnostic frontend SSO utilities for Benote ecosystem",
   "main": "index.cjs",
   "module": "index.mjs",
